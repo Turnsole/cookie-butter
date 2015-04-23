@@ -1,6 +1,6 @@
 # cookie-butter
 
-Python script for making graphics performance charts for an Android device. To use, enable "Profile GPU rendering" from Developer Options, and restart the app you want to measure. Requires the matplotlib python library. 
+Python script for making graphics performance charts for an Android app. To use, enable "Profile GPU rendering" from Developer Options, and restart the app you want to measure. Requires the matplotlib python library. 
 
 Usage: 
 
