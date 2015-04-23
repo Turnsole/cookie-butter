@@ -1,20 +1,25 @@
+#############################################################################################
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+##############################################################################################
 """
     Generate a graph of frame times
     for the specified number of seconds on an Android device.
 """
-#############################################################################################
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-##############################################################################################
-
 import argparse
 import sys
 import time
@@ -22,26 +27,15 @@ import subprocess
 import numpy
 import matplotlib.pyplot as plot
 
-PARSER = argparse.ArgumentParser(
-    description='Generate frame time graph for a connected ADB device.')
-PARSER.add_argument('package_name', metavar='package', nargs=1,
-                    help='package to target (ex: com.google.android)')
-PARSER.add_argument('num_seconds', metavar='seconds', type=int, nargs='?',
-                    default=1, help='number of seconds to collect data')
-PARSER.add_argument('graph_title', metavar='title', nargs='?',
-                    default='ms_per_frame', help='title to use for graph')
-PARSER.add_argument('device', metavar='device', nargs='?',
-                    help='direct to a specific ADB device')
-ARGS = PARSER.parse_args()
-
 def scrape_gfxinfo(device, seconds, package):
     """Grab frame info via dumpsys gfxinfo. Return numpy array of floats."""
     results = []
 
     for second in range(seconds):
         in_section = False
-        target = "" if (device is None or len(device) == 0) else "-s " + device
+        target = "" if (device is None or len(device) == 0) else "-s " + device 
         cmd = "adb {} shell dumpsys gfxinfo {}".format(target, package)
+        print cmd 
         try:
             dumpsys_output = subprocess.check_output([cmd], shell=True)
         except subprocess.CalledProcessError:
@@ -58,7 +52,7 @@ def scrape_gfxinfo(device, seconds, package):
                 else:
                     results.append(line.split())
             else:
-                if "Draw	Prepare	Process	Execute" == line:
+                if "Draw Prepare Process Execute".split() == line.split():
                     in_section = True
 
         print "\tRound {} done, now have {} frames.".format(second, len(results))
@@ -67,7 +61,7 @@ def scrape_gfxinfo(device, seconds, package):
 
     return numpy.array(results, dtype=float)
 
-def draw_frames(collected_frames):
+def draw_frames(collected_frames, title):
     """Get the times for each stage of rendering."""
     collected_draw = numpy.array(zip(*collected_frames)[0])
     collected_prepare = numpy.array(zip(*collected_frames)[1])
@@ -101,7 +95,7 @@ def draw_frames(collected_frames):
 
     plot.ylabel('ms')
     plot.xlabel('frame')
-    plot.title(ARGS.graph_title)
+    plot.title(title)
     plot.legend(
         (draw_bar[0], prepare_bar[0], process_bar[0], execute_bar[0]),
         ('Draw', 'Prepare', 'Process', 'Execute'))
@@ -116,13 +110,27 @@ def draw_frames(collected_frames):
               "Median: {}ms \nAverage: {}ms".format(median, average))
 
     #Save to disk.
-    filename = ARGS.graph_title + ".png"
+    filename = title + ".png"
     plot.savefig(filename)
     print "Saved {} frames to graph as {}.".format(len(collected_totals), filename)
 
-FRAMES = scrape_gfxinfo(ARGS.device, ARGS.num_seconds, ARGS.package_name[0])
-if len(FRAMES) > 1:
-    draw_frames(FRAMES)
-else:
-    print "Got no frames. Is collection enabled & the app drawing?"
-    sys.exit()
+def main(sys_args):
+    parser = argparse.ArgumentParser(description='Generate frame time graph for a connected ADB device.')
+    parser.add_argument('package_name', metavar='package', nargs=1,
+                        help='package to target (ex: com.google.android)')
+    parser.add_argument('num_seconds', metavar='seconds', type=int, nargs='?',
+                        default=1, help='number of seconds to collect data')
+    parser.add_argument('graph_title', metavar='title', nargs='?',
+                        default='ms_per_frame', help='title to use for graph')
+    parser.add_argument('device', metavar='device', nargs='?',
+                        help='direct to a specific ADB device')
+    args = parser.parse_args(sys_args)
+
+    frames = scrape_gfxinfo(args.device, args.num_seconds, args.package_name[0])
+    if len(frames) > 1:
+        draw_frames(frames, args.graph_title)
+    else:
+        print "Got no frames. Is collection enabled & {} drawing?".format(args.package_name[0])
+
+if __name__ == "__main__":
+    main(sys.argv[1:]) 
