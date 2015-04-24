@@ -35,7 +35,6 @@ def scrape_gfxinfo(device, seconds, package):
         in_section = False
         target = "" if (device is None or len(device) == 0) else "-s " + device 
         cmd = "adb {} shell dumpsys gfxinfo {}".format(target, package)
-        print cmd 
         try:
             dumpsys_output = subprocess.check_output([cmd], shell=True)
         except subprocess.CalledProcessError:
@@ -52,7 +51,7 @@ def scrape_gfxinfo(device, seconds, package):
                 else:
                     results.append(line.split())
             else:
-                if "Draw Prepare Process Execute".split() == line.split():
+                if "Process Execute".split() == line.split()[-2:]:
                     in_section = True
 
         print "\tRound {} done, now have {} frames.".format(second, len(results))
@@ -63,13 +62,19 @@ def scrape_gfxinfo(device, seconds, package):
 
 def draw_frames(collected_frames, title):
     """Get the times for each stage of rendering."""
+    number_stages = len(collected_frames[0])
+    number_frames = len(collected_frames)
+
     collected_draw = numpy.array(zip(*collected_frames)[0])
-    collected_prepare = numpy.array(zip(*collected_frames)[1])
-    collected_process = numpy.array(zip(*collected_frames)[2])
-    collected_execute = numpy.array(zip(*collected_frames)[3])
+    if number_stages > 3:
+        collected_prepare = numpy.array(zip(*collected_frames)[1])
+    else:
+        collected_prepare = numpy.zeros(number_frames)
+    collected_process = numpy.array(zip(*collected_frames)[number_stages - 2])
+    collected_execute = numpy.array(zip(*collected_frames)[number_stages - 1])
 
     #Create a bar graph for each stage and stack them.
-    collected_indexes = numpy.arange(len(collected_frames))
+    collected_indexes = numpy.arange(number_frames)
     draw_bar = plot.bar(collected_indexes, collected_draw,
                         width=1.0,
                         color='#7C4DFF', # purple 
