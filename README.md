@@ -9,6 +9,13 @@ Usage:
 Example: 
     
     python generate_frametime_graphs.py com.google.android.deskclock 5 example_graph 078f1fe513d
+    
+Output: 
+
+    Median: 5.0ms 
+    Average: 5.0ms 
+    Device framerate: 60.0 
+    Estimated dropped frames: 4
 
 ![Example Graph](example_graph.png "Example Graph")
 
