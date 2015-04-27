@@ -27,6 +27,26 @@ import subprocess
 import numpy
 import matplotlib.pyplot as plot
 
+def estimate_dropped_frames(fps, collected_totals):
+    max_time = 1000 / float(fps)
+
+    dropped_frames = 0
+    for frame_time in collected_totals:
+        if frame_time > max_time:
+            dropped_frames += 1
+    return dropped_frames
+
+def scrape_display_info(device):
+    """Grab frame rate info via dumpsys display. Return fps as a string."""
+    target = "" if (device is None or len(device) == 0) else "-s " + device 
+    cmd = "adb {} shell dumpsys display | grep -i mphys | cut -d ',' -f 2".format(target)
+    try:
+        return subprocess.check_output([cmd], shell=True).split()[0]
+    except subprocess.CalledProcessError:
+        print "Unable to execute ADB command."
+        print "If there is more than one device, specify which."
+        sys.exit()
+
 def scrape_gfxinfo(device, seconds, package):
     """Grab frame info via dumpsys gfxinfo. Return numpy array of floats."""
     results = []
@@ -45,8 +65,8 @@ def scrape_gfxinfo(device, seconds, package):
         for line in dumpsys_output.split("\n"):
             line = line.strip()
 
-            if in_section and len(line) > 0:
-                if "View hierarchy:" == line:
+            if in_section:
+                if len(line) == 0:
                     in_section = False
                 else:
                     results.append(line.split())
@@ -60,7 +80,7 @@ def scrape_gfxinfo(device, seconds, package):
 
     return numpy.array(results, dtype=float)
 
-def draw_frames(collected_frames, title):
+def draw_frames(collected_frames, title, fps):
     """Get the times for each stage of rendering."""
     number_stages = len(collected_frames[0])
     number_frames = len(collected_frames)
@@ -98,7 +118,7 @@ def draw_frames(collected_frames, title):
                            bottom=collected_totals)
     collected_totals = collected_totals + collected_execute
 
-    plot.ylabel('ms')
+    plot.ylabel('time in ms')
     plot.xlabel('frame')
     plot.title(title)
     plot.legend(
@@ -110,11 +130,13 @@ def draw_frames(collected_frames, title):
 
     median = round(numpy.median(collected_totals))
     average = round(numpy.average(collected_totals))
+    est_dropped = estimate_dropped_frames(fps, collected_totals)
 
-    plot.text(info_x_coordinate, info_y_coordinate,
-              "Median: {}ms \nAverage: {}ms".format(median, average))
+    summary = """Median: {}ms \nAverage: {}ms \nDevice framerate: {} \nEstimated dropped frames: {}""".format(median, average, fps, est_dropped)
+    print summary
 
-    #Save to disk.
+    #Plot and save to disk.
+    plot.text(info_x_coordinate, info_y_coordinate, summary)
     filename = title + ".png"
     plot.savefig(filename)
     print "Saved {} frames to graph as {}.".format(len(collected_totals), filename)
@@ -133,7 +155,8 @@ def main(sys_args):
 
     frames = scrape_gfxinfo(args.device, args.num_seconds, args.package_name[0])
     if len(frames) > 1:
-        draw_frames(frames, args.graph_title)
+        fps = scrape_display_info(args.device)
+        draw_frames(frames, args.graph_title, fps)
     else:
         print "Got no frames. Is collection enabled & {} drawing?".format(args.package_name[0])
 
