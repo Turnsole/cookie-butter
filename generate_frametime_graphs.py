@@ -39,7 +39,7 @@ def estimate_dropped_frames(fps, collected_totals):
 def scrape_display_info(device):
     """Grab frame rate info via dumpsys display. Return fps as a string."""
     target = "" if (device is None or len(device) == 0) else "-s " + device 
-    cmd = "adb {} shell dumpsys display | grep -i mphys | cut -d ',' -f 2".format(target)
+    cmd = "adb {} shell dumpsys display | grep PhysicalDisplayInfo | cut -d ',' -f 2".format(target)
     try:
         return subprocess.check_output([cmd], shell=True).split()[0]
     except subprocess.CalledProcessError:
