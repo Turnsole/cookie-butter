@@ -19,3 +19,4 @@ Output:
 
 ![Example Graph](example_graph.png "Example Graph")
 
+There's some more info on my blog post here: https://www.lastminutedevice.com/android/2015/06/05/graphics-performance-on-android/ 
